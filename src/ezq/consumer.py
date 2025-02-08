@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from functools import lru_cache
-from typing import Any, Awaitable, Callable, Generic, Optional
+from typing import Any, Awaitable, Callable, Coroutine, Generic, Optional
 
 from tembo_pgmq_python.async_queue import Message, PGMQueue  # type: ignore
 
@@ -91,7 +91,9 @@ async def consumer(
     end_event = asyncio.Event()
     interrupt_event = asyncio.Event()
 
-    def _discard_task(task: asyncio.Task, success_callback: Callable[[], None]) -> None:
+    def _discard_task(
+        task: asyncio.Task, success_callback: Callable[[], Coroutine[Any, Any, Any]]
+    ) -> None:
         if task.done():
             try:
                 _handle_task_errors(task.exception())
@@ -102,7 +104,7 @@ async def consumer(
             except Exception:
                 pass
             else:
-                success_callback()
+                asyncio.create_task(success_callback())
             finally:
                 _tasks.discard(task)
 
@@ -137,7 +139,8 @@ async def consumer(
                 _tasks.add(task)
                 task.add_done_callback(
                     lambda _: _discard_task(
-                        task, lambda: pgmq.delete(queue_name, message.msg_id)
+                        task,
+                        lambda: pgmq.delete(queue_name, message.msg_id),
                     )
                 )
             except Exception as e:

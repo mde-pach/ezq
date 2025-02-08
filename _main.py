@@ -35,7 +35,7 @@ stop_event = asyncio.Event()
 @on_event
 async def tutu_event(event: TutuEvent):
     # stop_event.set()
-    raise ValueError
+    # raise ValueError
     print("Tutu Event", event)
     # await asyncio.sleep(100)
 

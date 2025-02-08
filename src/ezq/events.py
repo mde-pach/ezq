@@ -6,12 +6,16 @@ from ezq.base import EventMeta
 
 @dataclass(frozen=True)
 class Config:
-    pass
+    """
+    EZQ configuration for the event class.
+    """
 
 
 @dataclass()
 class Meta:
-    pass
+    """
+    EZQ meta informations of the event instance.
+    """
 
 
 @dataclass
@@ -37,7 +41,7 @@ class EZQEvent(metaclass=EventMeta):
         >>> await listener()  # Will process events and call handlers
     """
 
-    # config: ClassVar[Config] = Config()
+    config: ClassVar[Config] = Config()
     # meta: ClassVar[Meta] = Meta()
 
 
