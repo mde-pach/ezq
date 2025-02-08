@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from functools import lru_cache
-from typing import Any, Awaitable, Callable, Generic, NoReturn, Optional
+from typing import Any, Awaitable, Callable, Generic, Optional
 
 from tembo_pgmq_python.async_queue import Message, PGMQueue  # type: ignore
 
@@ -45,7 +45,7 @@ def _handle_task_errors(result: BaseException | None) -> None:
         case asyncio.CancelledError():
             logger.warning(f"Task cancelled: {result}")
         case Exception():
-            logger.error(f"Unexpected error while processing task: {result}")
+            raise result
 
 
 async def consumer(
@@ -54,7 +54,7 @@ async def consumer(
     pgmq: PGMQueue | None = None,
     timeout: float = 1,
     empty_poll_delay: float = 0.01,
-    error_delay: float = 1.0,
+    error_delay: float = 0.1,
     stop_event: Optional[asyncio.Event] = None,
 ) -> None:
     """Continuously poll a PGMQ queue for messages and dispatch them as events.
@@ -91,7 +91,7 @@ async def consumer(
     end_event = asyncio.Event()
     interrupt_event = asyncio.Event()
 
-    def _discard_task(task: asyncio.Task) -> None:
+    def _discard_task(task: asyncio.Task, success_callback: Callable[[], None]) -> None:
         if task.done():
             try:
                 _handle_task_errors(task.exception())
@@ -99,9 +99,12 @@ async def consumer(
                 end_event.set()
             except EZQInterruptError:
                 interrupt_event.set()
-            except Exception as e:
-                logger.error(f"Unexpected error while discarding task: {e}")
-            _tasks.discard(task)
+            except Exception:
+                pass
+            else:
+                success_callback()
+            finally:
+                _tasks.discard(task)
 
     pgmq = pgmq or await get_pgmq(queue_name)
 
@@ -110,7 +113,7 @@ async def consumer(
             raise EZQInterruptError()
         if not end_event.is_set():
             try:
-                message = await pgmq.pop(queue_name)
+                message = await pgmq.read(queue_name, vt=timeout + error_delay)
                 if message is None:
                     await asyncio.sleep(empty_poll_delay)
                     continue
@@ -132,7 +135,11 @@ async def consumer(
                     interrupt_event.set()
                 task = asyncio.create_task(dispatch_event(event, timeout=timeout))
                 _tasks.add(task)
-                task.add_done_callback(_discard_task)
+                task.add_done_callback(
+                    lambda _: _discard_task(
+                        task, lambda: pgmq.delete(queue_name, message.msg_id)
+                    )
+                )
             except Exception as e:
                 logger.error(f"Unexpected error while dispatching event: {e}")
 
@@ -217,10 +224,8 @@ class _EventHandler(Generic[EventT]):
             if task.done():
                 try:
                     _handle_task_errors(task.exception())
-                except EZQError:
-                    pass
-                except Exception as e:
-                    logger.error(f"Unexpected error while discarding task: {e}")
+                except EZQInterruptError:
+                    raise
                 finally:
                     _tasks.discard(task)
 
@@ -241,6 +246,10 @@ class _EventHandler(Generic[EventT]):
                     raise EZQEndError(result) from None
                 case EZQInterruptError():
                     raise EZQInterruptError(result) from None
+                case Exception():
+                    logger.exception(
+                        f"Error while handling event {event}", exc_info=result
+                    )
 
 
 @lru_cache

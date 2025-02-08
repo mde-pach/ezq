@@ -1,7 +1,17 @@
 from dataclasses import dataclass
-from typing import TypeVar
+from typing import ClassVar, TypeVar
 
 from ezq.base import EventMeta
+
+
+@dataclass(frozen=True)
+class Config:
+    pass
+
+
+@dataclass()
+class Meta:
+    pass
 
 
 @dataclass
@@ -26,6 +36,9 @@ class EZQEvent(metaclass=EventMeta):
         ...
         >>> await listener()  # Will process events and call handlers
     """
+
+    # config: ClassVar[Config] = Config()
+    # meta: ClassVar[Meta] = Meta()
 
 
 class EZQInternalEvent(EZQEvent):
