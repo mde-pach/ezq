@@ -34,35 +34,41 @@ stop_event = asyncio.Event()
 
 @on_event
 async def tutu_event(event: TutuEvent):
+    pass
     # stop_event.set()
     # raise ValueError
     print("Tutu Event", event)
     # await asyncio.sleep(100)
 
 
+async def set_queue(amount: int):
+    await clean()
+    await process_events(
+        [TutuEvent(titi="titi", tutu=_) for _ in range(amount)],
+    )
+
+
+total_tutu_events = 100000
+
+
 async def main():
     import time
 
-    logging.basicConfig(level=logging.INFO)
-
-    await clean()
+    # logging.basicConfig(level=logging.DEBUG)
+    # await clean()
 
     start = time.time()
-    total_tutu_events = 100
-    number_of_consumers = 1
+    number_of_consumers = 5
 
-    await process_events(
-        [TutuEvent(titi="titi", tutu=_) for _ in range(total_tutu_events)],
-    )
-    # for _ in range(number_of_consumers):
-    # await process_event(EZQEndEvent())
+    for _ in range(number_of_consumers):
+        await process_event(EZQEndEvent())
 
-    total_events = total_tutu_events + 1
-    event_processing_time = time.time() - start
-    average_event_time = event_processing_time / total_events
+    # total_events = total_tutu_events + 1
+    # event_processing_time = time.time() - start
+    # average_event_time = event_processing_time / total_events
 
-    print("Total event processing time:", event_processing_time)
-    print("Average event processing time per event:", average_event_time)
+    # print("Total event processing time:", event_processing_time)
+    # print("Average event processing time per event:", average_event_time)
 
     start = time.time()
     await asyncio.gather(
@@ -70,7 +76,7 @@ async def main():
     )
     consumer_time = time.time() - start
 
-    print(f"Event processing time: {event_processing_time}")
+    # print(f"Event processing time: {event_processing_time}")
     print(f"Consumer time: {consumer_time}")
 
 
