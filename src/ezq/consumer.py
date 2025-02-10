@@ -1,24 +1,23 @@
 import asyncio
 import logging
-from functools import lru_cache
-from typing import Any, Awaitable, Callable, Coroutine, Generic, Optional
+from typing import Optional
 
 from tembo_pgmq_python.async_queue import Message, PGMQueue  # type: ignore
 
-from ezq.base import EventMeta
-from ezq.events import (
-    EventT,
-    EZQEndEvent,
-    EZQEvent,
-    EZQInternalEvent,
-    EZQInterruptEvent,
-)
+from ezq.errors import EZQEndError, EZQInterruptError
+from ezq.events import EventMeta, EZQEndEvent, EZQEvent, EZQInterruptEvent
+from ezq.handler import get_event_handler
 from ezq.queue_ import _DEFAULT_QUEUE_NAME, get_pgmq
+from ezq.tasks import handle_task_errors
 
 logger = logging.getLogger(__name__)
 
 
 def extract_event(message: Message) -> EZQEvent:
+    """
+    Create the appropriate event instance from a message based on the message content.
+    """
+
     event_data = message.message
     event_type = event_data.pop(EventMeta._type_key)
     if event_type == EZQEndEvent.__name__:
@@ -27,25 +26,9 @@ def extract_event(message: Message) -> EZQEvent:
         return EZQInterruptEvent()
     EventClass = EventMeta._event_types.get(event_type)
     if EventClass is None:
+        logger.error(f"Event type {event_type} not found")
         raise ValueError(f"Event type {event_type} not found")
     return EventClass(**event_data)
-
-
-def _handle_task_errors(result: BaseException | None) -> None:
-    """Handle and log any errors from an asyncio task."""
-    match result:
-        case None:
-            return
-        case EZQEndError():
-            raise EZQEndError(result) from None
-        case EZQInterruptError():
-            raise EZQInterruptError(result) from None
-        case TimeoutError():
-            logger.warning(f"Task timed out: {result}")
-        case asyncio.CancelledError():
-            logger.warning(f"Task cancelled: {result}")
-        case Exception():
-            raise result
 
 
 async def consumer(
@@ -88,15 +71,16 @@ async def consumer(
             This event is used to stop the consumer immediately.
     """
     _tasks: set[asyncio.Task] = set()
+    _cleanup_tasks: set[asyncio.Task] = set()
     end_event = asyncio.Event()
     interrupt_event = asyncio.Event()
 
-    def _discard_task(
-        task: asyncio.Task, success_callback: Callable[[], Coroutine[Any, Any, Any]]
-    ) -> None:
+    pgmq = pgmq or await get_pgmq(queue_name)
+
+    def _task_callback(task: asyncio.Task) -> None:
         if task.done():
             try:
-                _handle_task_errors(task.exception())
+                handle_task_errors(task)
             except EZQEndError:
                 end_event.set()
             except EZQInterruptError:
@@ -104,11 +88,13 @@ async def consumer(
             except Exception:
                 pass
             else:
-                asyncio.create_task(success_callback())
+                _cleanup_tasks.add(
+                    asyncio.create_task(pgmq.delete(queue_name, message.msg_id))
+                )
             finally:
                 _tasks.discard(task)
-
-    pgmq = pgmq or await get_pgmq(queue_name)
+        else:
+            logger.error(f"Task {task} is not done, this should not happen")
 
     while not (stop_event and stop_event.is_set()) and not end_event.is_set():
         if interrupt_event.is_set():
@@ -137,124 +123,16 @@ async def consumer(
                     interrupt_event.set()
                 task = asyncio.create_task(dispatch_event(event, timeout=timeout))
                 _tasks.add(task)
-                task.add_done_callback(
-                    lambda _: _discard_task(
-                        task,
-                        lambda: pgmq.delete(queue_name, message.msg_id),
-                    )
-                )
+                task.add_done_callback(_task_callback)
             except Exception as e:
                 logger.error(f"Unexpected error while dispatching event: {e}")
 
     logger.debug("Consumer exiting")
     if _tasks:
         await asyncio.gather(*_tasks, return_exceptions=True)
+    if _cleanup_tasks:
+        await asyncio.gather(*_cleanup_tasks)
 
 
 async def dispatch_event(event: EZQEvent, *, timeout: float) -> None:
     await get_event_handler().handle_event(event, timeout=timeout)
-
-
-def on_event(
-    func: Callable[[EventT], Awaitable[Any]],
-) -> Callable[[EventT], Awaitable[Any]]:
-    event_type = func.__annotations__.get("event")
-    if not event_type or not issubclass(event_type, EZQEvent):
-        raise ValueError(
-            f"Event handler {func.__name__} must have a BaseEvent subclass as its first parameter"
-        )
-
-    get_event_handler().register(event_type, func)  # type: ignore
-    return func
-
-
-class EZQError(Exception):
-    pass
-
-
-class EZQEndError(EZQError):
-    pass
-
-
-class EZQInterruptError(EZQError):
-    pass
-
-
-class _EventHandler(Generic[EventT]):
-    """
-    Overview:
-        The _EventHandler class is a generic, asynchronous event dispatcher designed to manage and execute
-        event handlers registered for specific event types. It plays a central role in the ezq architecture
-        by decoupling event production from event consumption.
-
-        This design enables multiple event handlers to be registered for a single event type, all of which
-        are invoked concurrently using asyncio's asynchronous capabilities.
-
-    Usage:
-        >>> # Define a custom event by subclassing a common event base (e.g., BaseEvent)
-        ... class UserRegisteredEvent(BaseEvent):
-        ...     email: str
-
-        >>> # Register an asynchronous event handler using the provided on_event decorator
-        ... @on_event
-        ... async def welcome_email_handler(event: UserRegisteredEvent):
-        ...     print(f"Sending welcome email to {event.email}")
-
-        >>> # Retrieve the singleton event handler instance and dispatch the event
-        >>> event_handler = get_event_handler()
-        >>> user_event = UserRegisteredEvent(email="user@example.com")
-        >>> await event_handler.handle_event(user_event)
-    """
-
-    _handlers: dict[type[EventT], list[Callable[[EventT], Awaitable[Any]]]]
-
-    def __init__(self) -> None:
-        self._handlers = {}
-
-    def register(
-        self,
-        event_type: type[EventT],
-        handler: Callable[[EventT], Awaitable[Any]],
-    ) -> None:
-        if event_type not in self._handlers:
-            self._handlers[event_type] = []
-        self._handlers[event_type].append(handler)
-
-    async def handle_event(self, event: EventT, *, timeout: float) -> None:
-        _tasks: set[asyncio.Task] = set()
-
-        def _discard_task(task: asyncio.Task) -> None:
-            if task.done():
-                try:
-                    _handle_task_errors(task.exception())
-                except EZQInterruptError:
-                    raise
-                finally:
-                    _tasks.discard(task)
-
-        event_type = type(event)
-        if event_type in self._handlers:
-            for handler in self._handlers[event_type]:
-                task: asyncio.Task = asyncio.create_task(
-                    asyncio.wait_for(handler(event), timeout=timeout)
-                )
-                task.add_done_callback(_discard_task)
-                _tasks.add(task)
-        elif not isinstance(event, EZQInternalEvent):
-            logger.info(f"No handler registered for {event_type}")
-
-        for result in await asyncio.gather(*_tasks, return_exceptions=True):
-            match result:
-                case EZQEndError():
-                    raise EZQEndError(result) from None
-                case EZQInterruptError():
-                    raise EZQInterruptError(result) from None
-                case Exception():
-                    logger.exception(
-                        f"Error while handling event {event}", exc_info=result
-                    )
-
-
-@lru_cache
-def get_event_handler() -> _EventHandler:
-    return _EventHandler()

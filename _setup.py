@@ -1,12 +1,17 @@
+"""
+This is an example use for my test, not a part of the lib
+"""
+
 import asyncio
 
 from _main import TutuEvent
-from ezq import EZQEndEvent, EZQEvent, clean, consumer, on_event, process_events
+from ezq import publish_events
+from ezq.helper import clean
 
 
 async def set_queue(amount: int):
     await clean()
-    await process_events(
+    await publish_events(
         [TutuEvent(titi="titi", tutu=_) for _ in range(amount)],
     )
 

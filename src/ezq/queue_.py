@@ -34,8 +34,3 @@ async def get_pgmq(
         logger.exception("Error creating queue")
         raise
     return pgmq
-
-
-async def clean(queue_name: str = _DEFAULT_QUEUE_NAME) -> None:
-    pgmq = await get_pgmq(queue_name)
-    await pgmq.purge(queue_name)

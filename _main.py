@@ -1,9 +1,12 @@
+"""
+This is an example use for my test, not a part of the lib
+"""
+
 import asyncio
-import logging
 from dataclasses import dataclass
 
-from ezq import EZQEndEvent, EZQEvent, clean, consumer, on_event, process_event
-from ezq.processor import process_events
+from ezq import EZQEndEvent, EZQEvent, consumer, on_event, publish_event, publish_events
+from ezq.helper import clean
 
 
 @dataclass
@@ -43,7 +46,7 @@ async def tutu_event(event: TutuEvent):
 
 async def set_queue(amount: int):
     await clean()
-    await process_events(
+    await publish_events(
         [TutuEvent(titi="titi", tutu=_) for _ in range(amount)],
     )
 
@@ -51,33 +54,52 @@ async def set_queue(amount: int):
 total_tutu_events = 100000
 
 
+# async def main():
+#     import time
+
+#     # logging.basicConfig(level=logging.DEBUG)
+#     # await clean()
+#     await set_queue(total_tutu_events)
+
+#     start = time.time()
+#     number_of_consumers = 10
+
+#     # for _ in range(number_of_consumers):
+#     #     await publish_event(EZQEndEvent())
+
+#     # total_events = total_tutu_events + 1
+#     # event_processing_time = time.time() - start
+#     # average_event_time = event_processing_time / total_events
+
+#     # print("Total event processing time:", event_processing_time)
+#     # print("Average event processing time per event:", average_event_time)
+
+#     start = time.time()
+#     await asyncio.gather(
+#         *[consumer(stop_event=stop_event) for _ in range(number_of_consumers)],
+#     )
+#     consumer_time = time.time() - start
+
+#     # print(f"Event processing time: {event_processing_time}")
+#     print(f"Consumer time: {consumer_time}")
+
+
+from ezq import publish_event
+from ezq.events import EZQEndEvent, EZQInterruptEvent
+
+
+@on_event
+async def exit_consumer(event: EZQEndEvent):
+    print("Exiting consumer...")
+
+
 async def main():
-    import time
+    await clean()
+    await set_queue(1000)
+    await publish_event(EZQEndEvent())
+    await consumer()
 
-    # logging.basicConfig(level=logging.DEBUG)
-    # await clean()
-
-    start = time.time()
-    number_of_consumers = 5
-
-    for _ in range(number_of_consumers):
-        await process_event(EZQEndEvent())
-
-    # total_events = total_tutu_events + 1
-    # event_processing_time = time.time() - start
-    # average_event_time = event_processing_time / total_events
-
-    # print("Total event processing time:", event_processing_time)
-    # print("Average event processing time per event:", average_event_time)
-
-    start = time.time()
-    await asyncio.gather(
-        *[consumer(stop_event=stop_event) for _ in range(number_of_consumers)],
-    )
-    consumer_time = time.time() - start
-
-    # print(f"Event processing time: {event_processing_time}")
-    print(f"Consumer time: {consumer_time}")
+    print("Exiting main...")
 
 
 if __name__ == "__main__":
