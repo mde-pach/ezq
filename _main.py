@@ -7,11 +7,21 @@ import asyncio
 import multiprocessing
 import time
 
-from ezq import EZQEndEvent, EZQEvent, consumer, on_event, publish_event, publish_events
+from attr import asdict
+
 from ezq.helper import clean
+from ezvent import (
+    EZEndEvent,
+    EZInterruptEvent,
+    EZvent,
+    consumer,
+    on_event,
+    publish_event,
+    publish_events,
+)
 
 
-class TutuEvent(EZQEvent):
+class TutuEvent(EZvent):
     titi: str
     tutu: int
 
@@ -89,7 +99,7 @@ total_tutu_events = 100000
 
 
 @on_event
-async def exit_consumer(event: EZQEndEvent):
+async def exit_consumer(event: EZEndEvent):
     print("Exiting consumer...")
 
 
@@ -148,7 +158,7 @@ if __name__ == "__main__":
         await clean()
         await set_queue(EVENT_NUMBER)
         await publish_events(
-            [EZQEndEvent() for _ in range(NUM_PROCESSES * NUMBER_OF_CONSUMERS * 100)]
+            [EZEndEvent() for _ in range(NUM_PROCESSES * NUMBER_OF_CONSUMERS * 100)]
         )
 
     start = time.time()
@@ -167,6 +177,13 @@ if __name__ == "__main__":
 
     main_time = time.time() - start
     print(f"Main time: {main_time}")
+    print(
+        f"Number of events per consumer per second: {EVENT_NUMBER / (main_time * NUMBER_OF_CONSUMERS)}"
+    )
+    print(
+        f"Number of events per parallel worker per second: {EVENT_NUMBER / (main_time * NUM_PROCESSES)}"
+    )
+    print(f"Number of events per second: {EVENT_NUMBER / main_time}")
     print(
         f"Number of events per consumer per second: {EVENT_NUMBER / (main_time * NUMBER_OF_CONSUMERS)}"
     )

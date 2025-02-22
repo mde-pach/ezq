@@ -5,26 +5,27 @@ from typing import Optional
 
 from tembo_pgmq_python.async_queue import Message, PGMQueue  # type: ignore
 
+from ezq.dispatcher import dispatch_event  # type: ignore
+from ezvent.events import EventMeta, EZEndEvent, EZInterruptEvent, EZvent
+
 from .errors import EZQEndError, EZQInterruptError, NonExistingEventError
-from .events import EventMeta, EZQEndEvent, EZQEvent, EZQInterruptEvent
-from .handler import get_event_handler
 from .queue_ import DEFAULT_QUEUE_NAME, get_queue
 from .tasks import handle_task_errors
 
 logger = logging.getLogger(__name__)
 
 
-def extract_event(message: Message) -> EZQEvent:
+def extract_event(message: Message) -> EZvent:
     """
     Create the appropriate event instance from a message based on the message content.
     """
 
     event_data = message.message
     event_type = event_data.pop(EventMeta._type_key)
-    if event_type == EZQEndEvent.__name__:
-        return EZQEndEvent()
-    elif event_type == EZQInterruptEvent.__name__:
-        return EZQInterruptEvent()
+    if event_type == EZEndEvent.__name__:
+        return EZEndEvent()
+    elif event_type == EZInterruptEvent.__name__:
+        return EZInterruptEvent()
     EventClass = EventMeta._event_types.get(event_type)
     if EventClass is None:
         logger.error(f"Event type {event_type} not found")
@@ -129,9 +130,9 @@ async def consumer(
                 continue
 
             try:
-                if isinstance(event, EZQEndEvent):
+                if isinstance(event, EZEndEvent):
                     end_event.set()
-                if isinstance(event, EZQInterruptEvent):
+                if isinstance(event, EZInterruptEvent):
                     interrupt_event.set()
                 task = asyncio.create_task(dispatch_event(event, timeout=timeout))
                 _tasks.add(task)
@@ -144,7 +145,3 @@ async def consumer(
         await asyncio.gather(*_tasks, return_exceptions=True)
     if _cleanup_tasks:
         await asyncio.gather(*_cleanup_tasks)
-
-
-async def dispatch_event(event: EZQEvent, *, timeout: float) -> None:
-    await get_event_handler().handle_event(event, timeout=timeout)

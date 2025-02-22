@@ -2,21 +2,20 @@ from typing import Any, ClassVar, TypeVar, dataclass_transform
 
 from attrs import define
 
+# # TODO: WIP
+# @define(frozen=True)
+# class Config:
+#     """
+#     EZQ configuration for the event class.
+#     """
 
-# TODO: WIP
-@define(frozen=True)
-class Config:
-    """
-    EZQ configuration for the event class.
-    """
 
-
-# TODO: WIP
-@define()
-class Meta:
-    """
-    EZQ meta informations of the event instance.
-    """
+# # TODO: WIP
+# @define()
+# class Meta:
+#     """
+#     EZQ meta informations of the event instance.
+#     """
 
 
 @dataclass_transform()
@@ -33,7 +32,7 @@ class EventMeta(type):
     - Receiving events: The event type name is used to reconstruct the correct event class
     """
 
-    _event_types: ClassVar[dict[str, type["EZQEvent"]]] = {}
+    _event_types: ClassVar[dict[str, type["EZvent"]]] = {}
     _type_key: ClassVar[str] = "_type"
 
     def __new__(
@@ -43,18 +42,22 @@ class EventMeta(type):
         dct: dict[str, Any],
         **kwargs,
     ):
-        annotations: dict[str, Any] = dct.get("__annotations__", {})
-        for base in bases:
-            if hasattr(base, "__annotations__"):
-                annotations.update(base.__annotations__)
-        dct["__annotations__"] = annotations
+        # annotations: dict[str, Any] = dct.get("__annotations__", {})
+        # for base in bases:
+        #     if hasattr(base, "__annotations__"):
+        #         annotations.update(base.__annotations__)
+        # dct["__annotations__"] = annotations
+        # if new_cls.__name__ in EventMeta._event_types:
+        #     print("already declared")
+        #     return EventMeta._event_types[new_cls.__name__]
 
+        new_cls = super().__new__(cls, name, bases, dct, **kwargs)
+        if "__attrs_attrs__" in dct:
+            return new_cls
         new_cls = define(
             frozen=True,
             kw_only=True,
-            slots=False,
-            auto_detect=True,
-        )(super().__new__(cls, name, bases, dct, **kwargs))
+        )(new_cls)
         setattr(new_cls, cls._type_key, new_cls.__name__)
         if new_cls.__name__ in EventMeta._event_types:
             # TODO: handle that as attrs dataclass seems to duplicate the original class declaration
@@ -70,8 +73,7 @@ class EventMeta(type):
         return new_cls
 
 
-# @define(kw_only=True, auto_detect=True, auto_attribs=True)
-class EZQEvent(metaclass=EventMeta):
+class EZvent(metaclass=EventMeta):
     """
     Base class for all events in the system.
 
@@ -96,16 +98,16 @@ class EZQEvent(metaclass=EventMeta):
     _type: ClassVar[str]
 
 
-class EZQInternalEvent(EZQEvent):
+class EZInternalEvent(EZvent):
     pass
 
 
-class EZQInterruptEvent(EZQInternalEvent):
+class EZInterruptEvent(EZInternalEvent):
     pass
 
 
-class EZQEndEvent(EZQInternalEvent):
+class EZEndEvent(EZInternalEvent):
     timeout: float = 10.0
 
 
-EventT = TypeVar("EventT", bound=EZQEvent)
+EventT = TypeVar("EventT", bound=EZvent)

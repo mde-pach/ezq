@@ -14,4 +14,4 @@ dependencies = [
 dev = ["mypy>=1.15.0", "pytest>=8.3.4"]
 
 [tool.mypy]
-files = ["src/ezq", "_main.py"]
+files = ["src/ezq", "src/ezvent", "_main.py"]

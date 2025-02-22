@@ -3,8 +3,9 @@ import logging
 from functools import lru_cache
 from typing import Any, Awaitable, Callable, Generic
 
-from .events import EventT, EZQEvent, EZQInternalEvent
-from .tasks import handle_task_errors
+from ezq.tasks import handle_task_errors
+
+from .events import EventT, EZInternalEvent, EZvent
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +67,7 @@ class _EventHandler(Generic[EventT]):
                 )
                 task.add_done_callback(_task_callback)
                 _tasks.add(task)
-        elif not isinstance(event, EZQInternalEvent):
+        elif not isinstance(event, EZInternalEvent):
             logger.info(f"No handler registered for {event_type}")
 
         await asyncio.gather(*_tasks, return_exceptions=True)
@@ -81,10 +82,11 @@ def on_event(
     func: Callable[[EventT], Awaitable[Any]],
 ) -> Callable[[EventT], Awaitable[Any]]:
     event_type = func.__annotations__.get("event")
-    if not event_type or not issubclass(event_type, EZQEvent):
+    if not event_type or not issubclass(event_type, EZvent):
         raise ValueError(
             f"Event handler {func.__name__} must have a BaseEvent subclass as its first parameter"
         )
 
     get_event_handler().register(event_type, func)
+    return func
     return func

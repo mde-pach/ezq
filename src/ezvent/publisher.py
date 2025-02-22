@@ -3,8 +3,9 @@ import logging
 from attrs import asdict
 from tembo_pgmq_python.async_queue import PGMQueue  # type: ignore
 
+from ezq.queue_ import DEFAULT_QUEUE_NAME, get_queue
+
 from .events import EventMeta, EventT
-from .queue_ import DEFAULT_QUEUE_NAME, get_queue
 
 logger = logging.getLogger(__name__)
 
