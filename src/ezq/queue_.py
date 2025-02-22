@@ -5,11 +5,11 @@ from tembo_pgmq_python.async_queue import PGMQueue  # type: ignore
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_QUEUE_NAME = "ezq"
+DEFAULT_QUEUE_NAME = "ezq"
 
 
 @alru_cache
-async def get_pgmq(
+async def get_queue(
     queue_name: str,
     *,
     host: str = "localhost",

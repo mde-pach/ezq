@@ -3,8 +3,8 @@ import logging
 from functools import lru_cache
 from typing import Any, Awaitable, Callable, Generic
 
-from ezq.events import EventT, EZQEvent, EZQInternalEvent
-from ezq.tasks import handle_task_errors
+from .events import EventT, EZQEvent, EZQInternalEvent
+from .tasks import handle_task_errors
 
 logger = logging.getLogger(__name__)
 

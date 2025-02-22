@@ -1,8 +1,3 @@
-import logging
-
-logger = logging.getLogger(__name__)
-
-
 class EZQError(Exception):
     pass
 
@@ -12,4 +7,8 @@ class EZQEndError(EZQError):
 
 
 class EZQInterruptError(EZQError):
+    pass
+
+
+class NonExistingEventError(EZQError):
     pass

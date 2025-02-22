@@ -1,14 +1,15 @@
 import asyncio
 import logging
+from functools import partial
 from typing import Optional
 
 from tembo_pgmq_python.async_queue import Message, PGMQueue  # type: ignore
 
-from ezq.errors import EZQEndError, EZQInterruptError
-from ezq.events import EventMeta, EZQEndEvent, EZQEvent, EZQInterruptEvent
-from ezq.handler import get_event_handler
-from ezq.queue_ import _DEFAULT_QUEUE_NAME, get_pgmq
-from ezq.tasks import handle_task_errors
+from .errors import EZQEndError, EZQInterruptError, NonExistingEventError
+from .events import EventMeta, EZQEndEvent, EZQEvent, EZQInterruptEvent
+from .handler import get_event_handler
+from .queue_ import DEFAULT_QUEUE_NAME, get_queue
+from .tasks import handle_task_errors
 
 logger = logging.getLogger(__name__)
 
@@ -27,18 +28,19 @@ def extract_event(message: Message) -> EZQEvent:
     EventClass = EventMeta._event_types.get(event_type)
     if EventClass is None:
         logger.error(f"Event type {event_type} not found")
-        raise ValueError(f"Event type {event_type} not found")
+        raise NonExistingEventError(f"Event type {event_type} not found")
     return EventClass(**event_data)
 
 
 async def consumer(
-    queue_name: str = _DEFAULT_QUEUE_NAME,
+    queue_name: str = DEFAULT_QUEUE_NAME,
     *,
     pgmq: PGMQueue | None = None,
     timeout: float = 1,
     empty_poll_delay: float = 0.01,
     error_delay: float = 0.1,
     stop_event: Optional[asyncio.Event] = None,
+    batch_size: int = 100,
 ) -> None:
     """Continuously poll a PGMQ queue for messages and dispatch them as events.
 
@@ -75,9 +77,9 @@ async def consumer(
     end_event = asyncio.Event()
     interrupt_event = asyncio.Event()
 
-    pgmq = pgmq or await get_pgmq(queue_name)
+    pgmq = pgmq or await get_queue(queue_name)
 
-    def _task_callback(task: asyncio.Task) -> None:
+    def _task_callback(message: Message, task: asyncio.Task) -> None:
         if task.done():
             try:
                 handle_task_errors(task)
@@ -101,11 +103,14 @@ async def consumer(
             raise EZQInterruptError()
         if not end_event.is_set():
             try:
-                message = await pgmq.read(queue_name, vt=timeout + error_delay)
-                if message is None:
+                messages = await pgmq.read_batch(
+                    queue_name, vt=timeout + error_delay, batch_size=batch_size
+                )
+                # message = await pgmq.read(queue_name, vt=timeout + error_delay)
+                logger.debug(f"Messages received: {messages}")
+                if messages is None:
                     await asyncio.sleep(empty_poll_delay)
                     continue
-                event = extract_event(message)
             except ConnectionError as e:
                 logger.error(f"Connection error: {e}, retrying...")
                 await asyncio.sleep(error_delay)
@@ -115,7 +120,14 @@ async def consumer(
                 await asyncio.sleep(error_delay)
                 continue
 
+        for message in messages:
             logger.debug(f"Message received: {message}")
+            try:
+                event = extract_event(message)
+            except NonExistingEventError as e:
+                logger.exception(e)
+                continue
+
             try:
                 if isinstance(event, EZQEndEvent):
                     end_event.set()
@@ -123,7 +135,7 @@ async def consumer(
                     interrupt_event.set()
                 task = asyncio.create_task(dispatch_event(event, timeout=timeout))
                 _tasks.add(task)
-                task.add_done_callback(_task_callback)
+                task.add_done_callback(partial(_task_callback, message))
             except Exception as e:
                 logger.error(f"Unexpected error while dispatching event: {e}")
 
