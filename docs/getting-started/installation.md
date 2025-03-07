@@ -1,63 +1,64 @@
 # Installation
 
-This guide will help you install EZQ and its dependencies on your system.
+This guide will help you install `ezvent` and its dependencies on your system.
 
 ## Prerequisites
 
-Before installing EZQ, make sure you have:
+!!! info ""
+    Before installing `ezvent`, make sure you have:
 
-- **Python 3.11 or higher**: EZQ uses modern Python features that require recent versions
-- **PostgreSQL with PGMQ extension**: EZQ relies on PostgreSQL with the PGMQ message queue extension
-- **pip**: For package installation (comes with Python)
+    - **Python 3.11 or higher**: `ezvent` uses modern Python features that require recent versions
+    - **PostgreSQL with PGMQ extension**: `ezvent` relies on PostgreSQL with the PGMQ message queue extension
+    - **pip**: For package installation (comes with Python)
 
-## Installing PostgreSQL and PGMQ
+## Setting Up PostgreSQL and PGMQ
 
 ### 1. PostgreSQL Installation
 
-#### On Ubuntu/Debian:
+=== "Ubuntu/Debian"
 
-```bash
-sudo apt update
-sudo apt install postgresql postgresql-contrib
-```
+    ```bash
+    sudo apt update
+    sudo apt install postgresql postgresql-contrib
+    ```
 
-#### On macOS (using Homebrew):
+=== "macOS (using Homebrew)"
 
-```bash
-brew install postgresql
-brew services start postgresql
-```
+    ```bash
+    brew install postgresql
+    brew services start postgresql
+    ```
 
-#### On Windows:
+=== "Windows"
 
-Download and install PostgreSQL from the [official website](https://www.postgresql.org/download/windows/).
+    Download and install PostgreSQL from the [official website](https://www.postgresql.org/download/windows/).
 
 ### 2. Installing PGMQ Extension
 
 PGMQ is a PostgreSQL extension that adds message queue functionality to PostgreSQL.
 
-#### Using Docker (recommended for development):
+!!! example ""
+    Using Docker (recommended for development)
 
-```bash
-docker run -d \
-  --name pgmq-postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -p 5432:5432 \
-  quay.io/tembo/pgmq-pg:latest
-```
+    ```bash
+    docker run -d \
+      --name pgmq-postgres \
+      -e POSTGRES_PASSWORD=postgres \
+      -p 5432:5432 \
+      quay.io/tembo/pgmq-pg:latest
+    ```
 
-#### Manual Installation:
+!!! note ""
+    For manual installation, follow the instructions from the [PGMQ GitHub repository](https://github.com/tembo-io/pgmq).
 
-Follow the installation instructions from the [PGMQ GitHub repository](https://github.com/tembo-io/pgmq).
-
-## Installing EZQ
+## Installing `ezvent`
 
 ### Using pip (recommended)
 
-The easiest way to install EZQ is using pip:
+The easiest way to install `ezvent` is using pip:
 
 ```bash
-pip install ezq
+pip install ezvent
 ```
 
 ### Installing from Source
@@ -65,35 +66,36 @@ pip install ezq
 For the latest version or to contribute to development:
 
 ```bash
-git clone https://github.com/yourusername/ezq.git
-cd ezq
+git clone https://github.com/yourusername/ezvent.git
+cd ezvent
 pip install -e .
 ```
 
 ## Verifying Installation
 
-You can verify that EZQ is installed correctly by running:
+You can verify that `ezvent` is installed correctly by running:
 
 ```python
-import ezq
-print(ezq.__version__)
+import ezvent
+print(ezvent.__version__)
 ```
 
-## Configuration
+## Default Configuration
 
-By default, EZQ will try to connect to PostgreSQL at:
+!!! info ""
+    By default, `ezvent` will try to connect to PostgreSQL at:
 
-```
-Host: localhost
-Port: 5432
-User: postgres
-Password: postgres
-Database: postgres
-```
+    ```
+    Host: localhost
+    Port: 5432
+    User: postgres
+    Password: postgres
+    Database: postgres
+    ```
 
-If your PostgreSQL setup is different, you'll need to configure EZQ. See the [Configuration](../user-guide/configuration.md) section for details.
+    If your PostgreSQL setup is different, you'll need to configure `ezvent`. See the [Configuration](../user-guide/configuration.md) section for details.
 
 ## Next Steps
 
-- [Quick Start Guide](quick-start.md): Learn the basics of using EZQ
-- [Configuration Reference](../user-guide/configuration.md): Learn how to configure EZQ
+- [Quick Start Guide](quick-start.md): Learn the basics of using `ezvent`
+- [Configuration Reference](../user-guide/configuration.md): Learn how to configure `ezvent`

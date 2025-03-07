@@ -1,28 +1,51 @@
-# Configuration
+# Configuration Guide
 
-EZQ provides a flexible configuration system that allows you to customize its behavior according to your needs.
+!!! abstract ""
+    `ezvent` provides a flexible configuration system that allows you to customize its behavior
+    according to your needs. This guide explains how to configure `ezvent` for different environments.
 
 ## Configuration Methods
 
-There are two primary ways to configure EZQ:
+There are two primary ways to configure `ezvent`:
 
-1. **Environment Variables**: Set environment variables with the `EZQ_` prefix
-2. **Programmatic Configuration**: Configure directly in code using the `configure()` function
+=== "Environment Variables"
+    Set environment variables with the `EZQ_` prefix (current implementation, may change in future versions)
 
-## Configuration Precedence
+    ```bash
+    export EZQ_QUEUE_HOST=postgres.example.com
+    export EZQ_QUEUE_PORT=5432
+    ```
 
-When determining the value for a configuration option, EZQ follows this precedence order:
+=== "Programmatic Configuration"
+    Configure options directly in your code
 
-1. Programmatic configuration (highest priority)
-2. Environment variables
-3. Default values (lowest priority)
+    ```python
+    from ezvent import configure
 
-## Using Environment Variables
+    configure(
+        queue_host="postgres.example.com",
+        queue_port=5432
+    )
+    ```
 
-Environment variables are an excellent way to configure EZQ in production environments. All configuration options can be set using environment variables with the `EZQ_` prefix.
+!!! info ""
+    When determining the value for a configuration option, `ezvent` follows this precedence order:
+
+    1. Programmatic configuration (highest priority)
+    2. Environment variables
+    3. Default values (lowest priority)
+
+    This means that if you set a value programmatically, it will override any environment variable or default value.
+
+## Environment Variables
+
+Environment variables are excellent for configuring `ezvent` in production environments. All configuration options can be set using environment variables with the `EZQ_` prefix.
+
+!!! note ""
+    The `EZQ_` prefix is from the underlying `ezq` implementation and may change in future versions.
 
 ```bash
-# PostgreSQL connection settings
+# Database connection
 export EZQ_QUEUE_HOST=postgres.example.com
 export EZQ_QUEUE_PORT=5432
 export EZQ_QUEUE_USERNAME=app_user
@@ -38,31 +61,35 @@ export EZQ_CONSUMER_CONCURRENT_HANDLERS=10
 
 ## Programmatic Configuration
 
-For more dynamic configurations or when you need to set configuration values at runtime, you can use the `configure()` function:
+You can also configure `ezvent` directly in your code:
 
 ```python
-import ezq
+from ezvent import configure
 
-# Configure specific parameters
-ezq.configure(
+# Configure with specific parameters
+configure(
     queue_host="postgres.example.com",
+    queue_port=5432,
     queue_username="app_user",
     queue_password="secure_password",
-    consumer_batch_size=20
+    queue_database="events_db",
+    default_queue_name="my_app_events",
+
+    consumer_poll_interval=0.5,
+    consumer_batch_size=20,
+    consumer_concurrent_handlers=10
 )
 ```
 
-The `configure()` function accepts keyword arguments for any configuration option. The naming convention follows the pattern:
-
-- `queue_*` for queue-related settings
-- `consumer_*` for consumer-related settings
-- `logging_*` for logging-related settings
+This is useful for development environments or when you need to set configuration options dynamically based on other factors.
 
 ## Configuration Options
 
 ### Queue Configuration
 
-| Option                   | Environment Variable               | Default   | Description                         |
+Configuration options for the message queue connection:
+
+| Parameter                | Environment Variable               | Default   | Description                         |
 | ------------------------ | ---------------------------------- | --------- | ----------------------------------- |
 | `host`                   | `EZQ_QUEUE_HOST`                   | localhost | PostgreSQL host                     |
 | `port`                   | `EZQ_QUEUE_PORT`                   | 5432      | PostgreSQL port                     |
@@ -76,101 +103,81 @@ The `configure()` function accepts keyword arguments for any configuration optio
 
 ### Consumer Configuration
 
-| Option                  | Environment Variable                 | Default | Description                                        |
-| ----------------------- | ------------------------------------ | ------- | -------------------------------------------------- |
-| `poll_interval`         | `EZQ_CONSUMER_POLL_INTERVAL`         | 1.0     | Time in seconds to wait between empty polls        |
-| `batch_size`            | `EZQ_CONSUMER_BATCH_SIZE`            | 10      | Maximum number of messages to process in a batch   |
-| `concurrent_handlers`   | `EZQ_CONSUMER_CONCURRENT_HANDLERS`   | 5       | Maximum number of handlers to execute concurrently |
-| `timeout`               | `EZQ_CONSUMER_TIMEOUT`               | 30      | Default timeout for event processing               |
-| `shutdown_grace_period` | `EZQ_CONSUMER_SHUTDOWN_GRACE_PERIOD` | 5       | Grace period for shutdown in seconds               |
+Configuration options for the event consumer:
+
+| Parameter               | Environment Variable                 | Default | Description                                    |
+| ----------------------- | ------------------------------------ | ------- | ---------------------------------------------- |
+| `poll_interval`         | `EZQ_CONSUMER_POLL_INTERVAL`         | 1.0     | Time in seconds between empty polls            |
+| `batch_size`            | `EZQ_CONSUMER_BATCH_SIZE`            | 10      | Maximum number of messages to process at once  |
+| `concurrent_handlers`   | `EZQ_CONSUMER_CONCURRENT_HANDLERS`   | 5       | Maximum number of handlers to run concurrently |
+| `timeout`               | `EZQ_CONSUMER_TIMEOUT`               | 30      | Timeout for handlers in seconds                |
+| `shutdown_grace_period` | `EZQ_CONSUMER_SHUTDOWN_GRACE_PERIOD` | 5       | Grace period for shutdown in seconds           |
 
 ### Logging Configuration
 
-| Option                | Environment Variable          | Default         | Description                                       |
-| --------------------- | ----------------------------- | --------------- | ------------------------------------------------- |
-| `level`               | `EZQ_LOG_LEVEL`               | INFO            | Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL) |
-| `format`              | `EZQ_LOG_FORMAT`              | standard format | Log message format                                |
-| `enable_file_logging` | `EZQ_LOG_ENABLE_FILE_LOGGING` | false           | Whether to enable logging to a file               |
-| `log_file`            | `EZQ_LOG_FILE`                | None            | Path to the log file                              |
+Configuration options for logging:
 
-## Configuration in Different Environments
+| Parameter             | Environment Variable          | Default  | Description                                       |
+| --------------------- | ----------------------------- | -------- | ------------------------------------------------- |
+| `level`               | `EZQ_LOG_LEVEL`               | INFO     | Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL) |
+| `format`              | `EZQ_LOG_FORMAT`              | standard | Log message format                                |
+| `enable_file_logging` | `EZQ_LOG_ENABLE_FILE_LOGGING` | false    | Whether to enable logging to a file               |
+| `log_file`            | `EZQ_LOG_FILE`                | None     | Path to the log file                              |
 
-### Development
+## Example Configuration Scenarios
 
-For development, you can use a combination of environment variables and programmatic configuration:
-
-```python
-# development_config.py
-import ezq
-import os
-
-# Load development environment
-if os.getenv("ENV") == "development":
-    ezq.configure(
-        queue_host="localhost",
-        queue_password="dev_password",
-        consumer_batch_size=1,  # Process one message at a time for easier debugging
-        logging_level="DEBUG"
-    )
-```
-
-### Production
-
-For production, it's generally best to use environment variables:
-
-```bash
-# production.env
-EZQ_QUEUE_HOST=production-db.example.com
-EZQ_QUEUE_USERNAME=app_user
-EZQ_QUEUE_PASSWORD=secure_production_password
-EZQ_CONSUMER_BATCH_SIZE=50
-EZQ_CONSUMER_CONCURRENT_HANDLERS=20
-EZQ_LOG_LEVEL=WARNING
-```
-
-### Docker/Kubernetes
-
-When running in containerized environments, you can pass environment variables through your Docker or Kubernetes configuration:
-
-```yaml
-# docker-compose.yml
-version: "3"
-services:
-  app:
-    image: my-ezq-app
-    environment:
-      - EZQ_QUEUE_HOST=postgres
-      - EZQ_QUEUE_PASSWORD=my_password
-      - EZQ_DEFAULT_QUEUE_NAME=app_events
-```
-
-## Accessing Configuration Values
-
-If you need to access the current configuration values in your code, you can use `get_config()`:
+### Development Environment
 
 ```python
-from ezq import get_config
+from ezvent import configure
 
-config = get_config()
-print(f"Current host: {config.queue.host}")
-print(f"Batch size: {config.consumer.batch_size}")
+# Development configuration
+configure(
+    queue_host="localhost",
+    queue_database="dev_db",
+    default_queue_name="dev_events",
+    consumer_poll_interval=0.1,  # Quick polling for development
+    consumer_concurrent_handlers=1  # Single handler for predictable debugging
+)
 ```
 
-## Reloading Configuration
+### Production Environment
 
-You can reload the configuration at runtime by calling `get_config()` with `reload=True`:
+!!! example ""
+    Using environment variables is typically recommended for production:
+
+    ```bash
+    # Set in your environment or deployment configuration
+    export EZQ_QUEUE_HOST=prod-postgres.internal
+    export EZQ_QUEUE_PORT=5432
+    export EZQ_QUEUE_USERNAME=app_user
+    export EZQ_QUEUE_PASSWORD=secure_password
+    export EZQ_QUEUE_DATABASE=events_db
+    export EZQ_DEFAULT_QUEUE_NAME=prod_events
+    export EZQ_CONSUMER_CONCURRENT_HANDLERS=10
+    export EZQ_LOG_LEVEL=WARNING
+    ```
+
+### Testing Environment
 
 ```python
-from ezq import get_config
+# In your test setup
+from ezvent import configure
 
-# Reload configuration (e.g., after environment variables have changed)
-config = get_config(reload=True)
+# Configure for testing
+configure(
+    queue_database="test_db",
+    default_queue_name="test_events",
+    consumer_poll_interval=0.01,  # Fast polling for tests
+    consumer_concurrent_handlers=1  # Single handler for predictable behavior
+)
 ```
 
-## Best Practices
+## Next Steps
 
-- Use environment variables for production deployments
-- Keep sensitive information (like passwords) in environment variables, not in code
-- Consider using a secrets manager for sensitive configuration in production
-- Use different queue names for different environments to avoid cross-environment pollution
-- Set appropriate logging levels for different environments
+Now that you understand how to configure `ezvent`, learn about:
+
+- [Events](events.md): How to define and publish events
+- [Handlers](handlers.md): How to handle events
+
+You can also refer to the [API Reference](../api/index.md) for detailed documentation of all configuration options.

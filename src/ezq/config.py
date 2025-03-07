@@ -25,7 +25,7 @@ class QueueConfig:
 class ConsumerConfig:
     """Configuration for the event consumer"""
     poll_interval: float = 1.0
-    batch_size: int = 10
+    batch_size: int = 100
     concurrent_handlers: int = 5
     timeout: int = 30
     shutdown_grace_period: int = 5

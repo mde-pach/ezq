@@ -1,60 +1,77 @@
-# EZQ: Easy Event Queue
+# `ezvent`: Event-Driven Framework
 
 <div class="hero-banner">
-    <p class="hero-subtitle">A powerful and easy-to-use Python library for event processing</p>
+    <p class="hero-subtitle">A Python framework for building event-driven systems</p>
 </div>
 
-EZQ is a Python library designed to abstract the complexities of event processing and consumption. It leverages asynchronous programming to provide a seamless and efficient event-driven architecture. With EZQ, developers can focus on building their applications without worrying about the underlying event management details.
+!!! abstract ""
+    `ezvent` is a Python framework for implementing event-driven architectures. It provides type-safe
+    event definitions and handlers with asyncio support, using PostgreSQL for message storage through
+    the PGMQ extension.
 
-## Features
+## ✨ Features
 
-- **Type-Safe Events**: Define your events using Python dataclasses for better type checking
-- **Async by Design**: Built from the ground up with asyncio support
-- **Postgres Backend**: Reliable message storage using PostgreSQL with PGMQ
-- **Simple API**: Clean, intuitive API that hides complexity
-- **Flexible Configuration**: Easy configuration through environment variables or code
-- **Pluggable Architecture**: Extensible design that can adapt to your needs
+- **Type-Safe Events**: Define events using Python dataclasses
+- **Async by Design**: Built with asyncio for asynchronous processing
+- **PostgreSQL Storage**: Message persistence using PostgreSQL/PGMQ
+- **Simple API**: Easy-to-use API for publishing and handling events
 
-## Quick Start
+## 🚀 Quick Start
 
 ```python
 import asyncio
-from ezq import EZQEvent as Event, on_event, process_events, consumer
+from ezvent import EZvent, on_event, publish_event, publish_events
+from ezvent.consumer import consumer
 from dataclasses import dataclass
 
 @dataclass
-class MyEvent(Event):
+class MyEvent(EZvent):
     data: str
 
 @on_event
 async def handle_my_event(event: MyEvent):
     print("Handling event:", event.data)
 
-async def main():
-    await process_events([MyEvent(data="Hello, EZQ!")])
+async def publish_example():
+    # Publish a single event
+    await publish_event(MyEvent(data="Hello, ezvent!"))
+
+    # Or publish multiple events
+    await publish_events([
+        MyEvent(data="First event"),
+        MyEvent(data="Second event")
+    ])
+
+async def consume_events():
+    # Start the consumer to process events
     await consumer()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(publish_example())
+    # In a real application, you would typically run the consumer in a separate process
+    # asyncio.run(consume_events())
 ```
 
-## Installation
+## 📦 Installation
 
 ```bash
-pip install ezq
+pip install ezvent
 ```
 
-## Why EZQ?
+!!! tip ""
+    For development, you can install in editable mode with documentation dependencies:
+    ```bash
+    pip install -e ".[doc]"
+    ```
 
-EZQ was built to simplify event-driven architectures while maintaining the power and flexibility needed for production systems. By leveraging PostgreSQL with the PGMQ extension, EZQ provides a reliable and scalable event queue that can handle millions of events with ease.
+## 📚 Documentation Sections
 
-## Documentation
+- [Getting Started](getting-started/installation.md): Installation and basic setup
+- [User Guide](user-guide/events.md): Guide to using `ezvent`
+- [Technical Details](implementation/ezq.md): Implementation details of the `ezq` message queue
+- [API Reference](api/index.md): API documentation
+- [Configuration](user-guide/configuration.md): Configuration options
 
-- [Getting Started](getting-started/installation.md): Installation and first steps
-- [User Guide](user-guide/events.md): Comprehensive guide to EZQ features
-- [API Reference](autoapi/ezq/index.md): Detailed API documentation
-- [Configuration](user-guide/configuration.md): Configuration guide
+## 📄 License
 
-## License
-
-EZQ is released under the MIT License. See the LICENSE file for more details.
+`ezvent` is released under the MIT License. See the LICENSE file for more details.

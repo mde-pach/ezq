@@ -74,7 +74,7 @@ async def consumer(
     effective_timeout = timeout or config.consumer.timeout
     effective_poll_delay = empty_poll_delay or config.consumer.poll_interval
     effective_error_delay = error_delay or 0.1  # Keep the hardcoded default for now
-    effective_batch_size = batch_size or config.consumer.batch_size
+    effective_batch_size = 100
     
     _tasks: set[asyncio.Task] = set()
     _cleanup_tasks: set[asyncio.Task] = set()
@@ -112,6 +112,7 @@ async def consumer(
                 messages = await pgmq.read_batch(
                     effective_queue_name, vt=effective_timeout + effective_error_delay, batch_size=effective_batch_size
                 )
+                # print(messages)
                 # message = await pgmq.read(effective_queue_name, vt=effective_timeout + effective_error_delay)
                 logger.debug(f"Messages received: {messages}")
                 if messages is None:
@@ -126,7 +127,11 @@ async def consumer(
                 await asyncio.sleep(effective_error_delay)
                 continue
 
-        for message in messages:
+        while messages:
+            if end_event.is_set():
+                break
+            message = messages.pop(0)
+
             logger.debug(f"Message received: {message}")
             try:
                 event = extract_event(message)
@@ -144,7 +149,10 @@ async def consumer(
                 task.add_done_callback(partial(_task_callback, message))
             except Exception as e:
                 logger.error(f"Unexpected error while dispatching event: {e}")
-
+    
+    if end_event.is_set():
+        for message in messages:
+            msg = await pgmq.set_vt(effective_queue_name, message.msg_id, vt=0)
     logger.debug("Consumer exiting")
     if _tasks:
         await asyncio.gather(*_tasks, return_exceptions=True)

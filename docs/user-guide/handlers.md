@@ -4,10 +4,10 @@ Event handlers are functions that process events when they occur. They contain t
 
 ## Defining Handlers
 
-In EZQ, event handlers are defined using the `@on_event` decorator:
+In ezvent, event handlers are defined using the `@on_event` decorator:
 
 ```python
-from ezq import on_event
+from ezvent import on_event
 from my_events import UserCreatedEvent
 
 @on_event
@@ -26,7 +26,7 @@ Key points about handlers:
 
 ## Handler Registration
 
-Handlers are automatically registered with EZQ when the `@on_event` decorator is applied. The handler will be called whenever an event of the specified type is processed.
+Handlers are automatically registered with ezvent when the `@on_event` decorator is applied. The handler will be called whenever an event of the specified type is processed.
 
 ### Handler Discovery
 
@@ -35,7 +35,7 @@ For handlers to be registered, the module containing them must be imported befor
 ```python
 # app.py - main entry point
 import asyncio
-from ezq import consumer
+from ezvent.consumer import consumer
 
 # Import all handlers to ensure they are registered
 import handlers.user_handlers
@@ -144,7 +144,7 @@ async def process_payment(event: PaymentRequiredEvent):
 
 ### Event Sourcing
 
-Event sourcing is a pattern where the state of your application is determined by a sequence of events. EZQ can be used as part of an event sourcing architecture:
+Event sourcing is a pattern where the state of your application is determined by a sequence of events. ezvent can be used as part of an event sourcing architecture:
 
 ```python
 class UserAggregate:

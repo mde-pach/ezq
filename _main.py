@@ -39,7 +39,6 @@ class TotoEvent(TutuEvent):
 @on_event
 async def toto_event(event: TotoEvent):
     pass
-    # print("Toto Event", event)
 
 
 stop_event = asyncio.Event()
@@ -48,9 +47,9 @@ stop_event = asyncio.Event()
 @on_event
 async def tutu_event(event: TutuEvent):
     pass
+    # print(event)
     # stop_event.set()
     # raise ValueError
-    # print("Tutu Event", event)
     # await asyncio.sleep(100)
 
 
@@ -151,6 +150,9 @@ if __name__ == "__main__":
     NUM_PROCESSES = args.num_processes
     NUMBER_OF_CONSUMERS = args.number_of_consumers
     EVENT_NUMBER = args.event_number
+    print(f"NUM_PROCESSES: {NUM_PROCESSES}")
+    print(f"NUMBER_OF_CONSUMERS: {NUMBER_OF_CONSUMERS}")
+    print(f"EVENT_NUMBER: {EVENT_NUMBER}")
 
     processes: list[multiprocessing.Process] = []
 
@@ -158,7 +160,7 @@ if __name__ == "__main__":
         await clean()
         await set_queue(EVENT_NUMBER)
         await publish_events(
-            [EZEndEvent() for _ in range(NUM_PROCESSES * NUMBER_OF_CONSUMERS * 100)]
+            [EZEndEvent() for _ in range(NUM_PROCESSES * NUMBER_OF_CONSUMERS)]
         )
 
     start = time.time()
