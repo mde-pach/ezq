@@ -15,6 +15,113 @@
 
 TODO
 
+## Documentation
+
+EZQ includes comprehensive documentation built with MkDocs. To view the documentation locally:
+
+1. Install the documentation dependencies:
+
+   ```bash
+   pip install -e ".[doc]"
+   ```
+
+2. Start the documentation server:
+
+   ```bash
+   mkdocs serve
+   ```
+
+3. Open your browser and navigate to http://localhost:8000
+
+The documentation uses several plugins for enhanced functionality:
+
+- **api-autonav**: Automatically generates navigation for API reference
+- **mkdocstrings**: Generates API documentation from docstrings
+- **include-markdown**: Allows including content from other markdown files
+- **awesome-pages**: Provides more control over page navigation
+- **macros**: Enables variables and template-like features in markdown
+- **codeinclude**: Includes code snippets from source files
+- **meta-descriptions**: Generates SEO-friendly meta descriptions
+
+To build the documentation for production:
+
+```bash
+mkdocs build
+```
+
+This will create a `site` directory with the static documentation that can be deployed to any web server.
+
+## Configuration
+
+EZQ provides a simple yet flexible configuration system with two main options:
+
+1. Programmatic configuration (highest priority)
+2. Environment variables
+3. Default values (lowest priority)
+
+### Configuration Methods
+
+#### Using Environment Variables
+
+Set environment variables with the `EZQ_` prefix:
+
+```bash
+export EZQ_QUEUE_HOST=postgres.example.com
+export EZQ_QUEUE_USERNAME=myuser
+export EZQ_QUEUE_PASSWORD=mypassword
+export EZQ_DEFAULT_QUEUE_NAME=my_app_events
+```
+
+#### Programmatic Configuration
+
+Configure EZQ directly in your code:
+
+```python
+import ezq
+
+# Configure specific parameters
+ezq.configure(
+    queue_host="postgres.example.com",
+    queue_username="myuser",
+    queue_password="mypassword"
+)
+```
+
+### Available Configuration Options
+
+#### Queue Configuration
+
+| Option                 | Environment Variable             | Default   | Description                         |
+| ---------------------- | -------------------------------- | --------- | ----------------------------------- |
+| host                   | EZQ_QUEUE_HOST                   | localhost | PostgreSQL host                     |
+| port                   | EZQ_QUEUE_PORT                   | 5432      | PostgreSQL port                     |
+| username               | EZQ_QUEUE_USERNAME               | postgres  | PostgreSQL username                 |
+| password               | EZQ_QUEUE_PASSWORD               | postgres  | PostgreSQL password                 |
+| database               | EZQ_QUEUE_DATABASE               | postgres  | PostgreSQL database                 |
+| default_queue_name     | EZQ_DEFAULT_QUEUE_NAME           | ezq       | Default queue name                  |
+| connection_timeout     | EZQ_QUEUE_CONNECTION_TIMEOUT     | 10        | Connection timeout in seconds       |
+| connection_retries     | EZQ_QUEUE_CONNECTION_RETRIES     | 3         | Number of connection retry attempts |
+| connection_retry_delay | EZQ_QUEUE_CONNECTION_RETRY_DELAY | 1         | Delay between retries in seconds    |
+
+#### Consumer Configuration
+
+| Option                | Environment Variable               | Default | Description                                        |
+| --------------------- | ---------------------------------- | ------- | -------------------------------------------------- |
+| poll_interval         | EZQ_CONSUMER_POLL_INTERVAL         | 1.0     | Time in seconds to wait between empty polls        |
+| batch_size            | EZQ_CONSUMER_BATCH_SIZE            | 10      | Maximum number of messages to process in a batch   |
+| concurrent_handlers   | EZQ_CONSUMER_CONCURRENT_HANDLERS   | 5       | Maximum number of handlers to execute concurrently |
+| timeout               | EZQ_CONSUMER_TIMEOUT               | 30      | Default timeout for event processing               |
+| shutdown_grace_period | EZQ_CONSUMER_SHUTDOWN_GRACE_PERIOD | 5       | Grace period for shutdown in seconds               |
+
+#### Logging Configuration
+
+| Option              | Environment Variable        | Default  | Description                                       |
+| ------------------- | --------------------------- | -------- | ------------------------------------------------- |
+| level               | EZQ_LOG_LEVEL               | INFO     | Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL) |
+| format              | EZQ_LOG_FORMAT              | standard | Log message format                                |
+| enable_file_logging | EZQ_LOG_ENABLE_FILE_LOGGING | false    | Whether to enable logging to a file               |
+| log_file            | EZQ_LOG_FILE                | None     | Path to the log file                              |
+
 ## Usage
 
 ### Quick Start

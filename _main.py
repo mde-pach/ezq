@@ -9,12 +9,12 @@ import time
 
 from attr import asdict
 
+from ezq import consumer
 from ezq.helper import clean
 from ezvent import (
     EZEndEvent,
     EZInterruptEvent,
     EZvent,
-    consumer,
     on_event,
     publish_event,
     publish_events,
